@@ -7,7 +7,7 @@
 <div class="container" style="padding-top: 24px">
     <div class="row">
         <div class="col-sm-8">
-            @using (Html.BeginForm("Upload", "Home", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            @using (Html.BeginForm("Upload", "Home", FormMethod.Post, new { enctype = "multipart/form-data" }))//upload form
             {
                 <input type="file" name="file" id="upload" style="display: none" onchange="$('#submit').click();" />
                 <input type="button" value="Upload a Photo" class="btn btn-primary btn-lg" onclick="$('#upload').click();" />
@@ -16,7 +16,7 @@
         </div>
         <div class="col-sm-4 pull-right">
 
-            @using (Html.BeginForm("Search", "Home", FormMethod.Post, new { enctype = "multipart/form-data", @class = "navbar-form" }))
+            @using (Html.BeginForm("Search", "Home", FormMethod.Post, new { enctype = "multipart/form-data", @class = "navbar-form" }))//search form
             {
                 <div class="input-group">
                     <input type="text" class="form-control" placeholder="Search photos" name="term" value="@ViewBag.Search" style="max-width: 800px">
@@ -36,7 +36,7 @@
 
     <div class="row">
         <div class="col-sm-12">
-            @foreach (BlobInfo blob in ViewBag.Blobs)
+            @foreach (BlobInfo blob in ViewBag.Blobs)//listing all the images on screen 
             {
                 <a href="@blob.ImageUri" rel="lightbox" title="@blob.Caption">
                     <img src="@blob.ThumbnailUri" width="192" title="@blob.Caption" style="padding-right: 16px; padding-bottom: 16px" />

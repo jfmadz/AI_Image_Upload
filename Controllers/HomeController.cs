@@ -32,12 +32,12 @@ namespace Intellipix.Controllers
         public ActionResult Index(string id)
         {
             // Pass a list of blob URIs and captions in ViewBag
-            CloudStorageAccount account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageConnectionString"]);
-            CloudBlobClient client = account.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference("photos");
+            CloudStorageAccount account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageConnectionString"]);//connection string for blob in webconfig
+            CloudBlobClient client = account.CreateCloudBlobClient();//Accessing blobs storage
+            CloudBlobContainer container = client.GetContainerReference("photos");//Container name
             List<BlobInfo> blobs = new List<BlobInfo>();
 
-            foreach (IListBlobItem item in container.ListBlobs())
+            foreach (IListBlobItem item in container.ListBlobs())//listing all blobs in the container "photos"
             {
                 var blob = item as CloudBlockBlob;
 
@@ -47,12 +47,12 @@ namespace Intellipix.Controllers
 
                     if (String.IsNullOrEmpty(id) || HasMatchingMetadata(blob, id))
                     {
-                        var caption = blob.Metadata.ContainsKey("Caption") ? blob.Metadata["Caption"] : blob.Name;
+                        var caption = blob.Metadata.ContainsKey("Caption") ? blob.Metadata["Caption"] : blob.Name;//returning caption
 
                         blobs.Add(new BlobInfo()
                         {
                             ImageUri = blob.Uri.ToString(),
-                            ThumbnailUri = blob.Uri.ToString().Replace("/photos/", "/thumbnails/"),
+                            ThumbnailUri = blob.Uri.ToString().Replace("/photos/", "/thumbnails/"),//Path for the container
                             Caption = caption
                         });
                     }
@@ -73,51 +73,55 @@ namespace Intellipix.Controllers
 
         //Upload Image Method
         [HttpPost]
-        public async Task<ActionResult> Upload(HttpPostedFileBase file)
+        public async Task<ActionResult> Upload(HttpPostedFileBase file)//Async method so the system does not with concurrent tasks
         {
             if (file != null && file.ContentLength > 0)
             {
                 // Make sure the user selected an image file
                 if (!file.ContentType.StartsWith("image"))
                 {
-                    TempData["Message"] = "Only image files may be uploaded";
+                    TempData["Message"] = "Only image files may be uploaded";//error message if file is not of type image
                 }
                 else
                 {
                     try
                     {
                         // Save the original image in the "photos" container
-                        CloudStorageAccount account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageConnectionString"]);
+                        CloudStorageAccount account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageConnectionString"]);//blob connection string in webconfig
                         CloudBlobClient client = account.CreateCloudBlobClient();
-                        CloudBlobContainer container = client.GetContainerReference("photos");
+                       
+                        //photo.SetProperties();
+                        CloudBlobContainer container = client.GetContainerReference("photos");//Name of container
                         CloudBlockBlob photo = container.GetBlockBlobReference(Path.GetFileName(file.FileName));
+                        //set cache control property for the uploaded blob
+                        photo.Properties.CacheControl = "max-age=300, must-revalidate";//5 minutes of caching on client side  
                         await photo.UploadFromStreamAsync(file.InputStream);
-
+                        
                         // Generate a thumbnail and save it in the "thumbnails" container
                         using (var outputStream = new MemoryStream())
                         {
                             file.InputStream.Seek(0L, SeekOrigin.Begin);
-                            var settings = new ResizeSettings { MaxWidth = 192 };
+                            var settings = new ResizeSettings { MaxWidth = 192 };//Making the image bigger for display purposes
                             ImageBuilder.Current.Build(file.InputStream, outputStream, settings);
                             outputStream.Seek(0L, SeekOrigin.Begin);
-                            container = client.GetContainerReference("thumbnails");
+                            container = client.GetContainerReference("thumbnails");//Name of container
                             CloudBlockBlob thumbnail = container.GetBlockBlobReference(Path.GetFileName(file.FileName));
                             await thumbnail.UploadFromStreamAsync(outputStream);
                         }
 
                         // Submit the image to Azure's Computer Vision API
                         ComputerVisionClient vision = new ComputerVisionClient(
-                            new ApiKeyServiceClientCredentials(ConfigurationManager.AppSettings["SubscriptionKey"]),
+                            new ApiKeyServiceClientCredentials(ConfigurationManager.AppSettings["SubscriptionKey"]),//computer vision key in webconfig
                             new System.Net.Http.DelegatingHandler[] { });
-                        vision.Endpoint = ConfigurationManager.AppSettings["VisionEndpoint"];
+                        vision.Endpoint = ConfigurationManager.AppSettings["VisionEndpoint"];//endpoint in webconfig
 
-                        VisualFeatureTypes[] features = new VisualFeatureTypes[] { VisualFeatureTypes.Description };
+                        VisualFeatureTypes[] features = new VisualFeatureTypes[] { VisualFeatureTypes.Description };//Analyzing the image that has been uploaded
                         var result = await vision.AnalyzeImageAsync(photo.Uri.ToString(), features);
 
                         // Record the image description and tags in blob metadata
                         photo.Metadata.Add("Caption", result.Description.Captions[0].Text);
 
-                        for (int i = 0; i < result.Description.Tags.Count; i++)
+                        for (int i = 0; i < result.Description.Tags.Count; i++)//loops to add tags as necessary
                         {
                             string key = String.Format("Tag{0}", i);
                             photo.Metadata.Add(key, result.Description.Tags[i]);
@@ -129,7 +133,7 @@ namespace Intellipix.Controllers
                     catch (Exception ex)
                     {
                         // In case something goes wrong
-                        TempData["Message"] = ex.Message;
+                        TempData["Message"] = ex.Message;//error message
                     }
                 }
             }
@@ -137,18 +141,6 @@ namespace Intellipix.Controllers
             return RedirectToAction("Index");
         }
 
-        public ActionResult About()
-        {
-            ViewBag.Message = "Your application description page.";
-
-            return View();
-        }
-
-        public ActionResult Contact()
-        {
-            ViewBag.Message = "Your contact page.";
-
-            return View();
-        }
+      
     }
 }
