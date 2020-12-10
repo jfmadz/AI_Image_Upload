@@ -94,7 +94,7 @@ namespace Intellipix.Controllers
                         CloudBlobContainer container = client.GetContainerReference("photos");//Name of container
                         CloudBlockBlob photo = container.GetBlockBlobReference(Path.GetFileName(file.FileName));
                         //set cache control property for the uploaded blob
-                        photo.Properties.CacheControl = "max-age=300, must-revalidate";//5 minutes of caching on client side  
+                        photo.Properties.CacheControl = "max-age=90, must-revalidate";//90 seconds of caching on client side  
                         await photo.UploadFromStreamAsync(file.InputStream);
                         
                         // Generate a thumbnail and save it in the "thumbnails" container
